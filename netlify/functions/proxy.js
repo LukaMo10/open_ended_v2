@@ -1,36 +1,44 @@
-import fetch from 'node-fetch';
-
+// netlify/functions/proxy.js
 export async function handler(event) {
   try {
-    // 前端通过 POST 传入内容
     const requestData = JSON.parse(event.body);
 
-    // Gemini API 地址
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "Missing GEMINI_API_KEY" }),
+      };
+    }
 
-    // 调用 Gemini API
+    // 正确的 Google AI API URL（带 key）
+    const url =
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': process.env.VITE_API_KEY,  // 使用 Netlify 环境变量
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: {
-          text: requestData.prompt
-        },
-        // 这里可以根据需求添加其他参数，比如 temperature、candidateCount 等
-        temperature: 0.7,
-        candidateCount: 1,
+        contents: [
+          {
+            parts: [
+              { text: requestData.prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+        }
       }),
     });
 
     const data = await response.json();
 
     return {
-      statusCode: 200,
+      statusCode: response.status,
       body: JSON.stringify(data),
     };
+
   } catch (err) {
     return {
       statusCode: 500,
